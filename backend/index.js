@@ -2,64 +2,37 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import http from "http";
-import { Server } from "socket.io";
+
+// Imports from your modules
+import connectDB from "./config/db.js";
+import chatRoutes from "./routes/chat.route.js";
+import { initSocket } from "./sockets/sockethandlers.js";
 
 dotenv.config();
 
+// Initialize App & DB
 const app = express();
-const port = process.env.PORT || 5000;
+connectDB();
 
-// Important: Apply CORS middleware to Express FIRST
+// Middlewares
 app.use(cors({
-  origin:'*',  // ← your frontend origin(s)
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  credentials: true,  // if you ever use cookies/auth
-  allowedHeaders: ["Content-Type", "Authorization"],
+  origin: ['http://localhost:3000'], 
+  credentials: true,
 }));
-
-// Handle OPTIONS preflight requests for all routes (including /socket.io)
-app.options("/*", cors());
-
-// Create HTTP server
-const server = http.createServer(app);
-
-// Initialize Socket.IO with explicit CORS
-const io = new Server(server, {
-  cors: {
-    origin:'*',  // ← match exactly what frontend uses
-    methods: ["GET", "POST"],
-    credentials: true,
-  },
-  // Optional: increase timeout if needed
-  pingTimeout: 60000,
-  pingInterval: 25000,
-});
-
-io.on("connection", (socket) => {
-  console.log("a user connected → ID:", socket.id);
-
-  socket.on("message", (data) => {
-    console.log("Message received:", data);
-    socket.broadcast.emit ("message", {
-      text: data.text,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    });
-  });
-
-  socket.on("disconnect", () => {
-    console.log("user disconnected");
-  });
-});
-
-// Your routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.get("/", (req, res) => {
-  res.send("Yeh ready to build talkbuddy backend");
-});
+// Routes
+app.use("/api/messages", chatRoutes);
 
-// Start server
+app.get("/", (req, res) => res.send("Chat Microservice is running"));
+
+// Create HTTP Server & Initialize Socket.io
+const server = http.createServer(app);
+initSocket(server); // 👈 Socket logic lives here now
+
+// Start Server
+const port = process.env.PORT || 5000;
 server.listen(port, () => {
-  console.log(`Server listening on port ${port}`);
+  console.log(`Chat Server listening on port ${port}`);
 });
