@@ -1,10 +1,14 @@
-
-import User from "../models/user.model.js";
+import prisma from "../prismaClient.js";
 
 const getUsers = async (req, res) => {
     try {
-        const users= await User.find({},'name');
-        res.status(200).json(users);
+        const users = await prisma.user.findMany({
+            select: { id: true, name: true }
+        });
+        // Map id to _id for frontend compatibility
+        const mappedUsers = users.map(u => ({ _id: u.id, name: u.name }));
+        res.status(200).json(mappedUsers);
+        console.log(mappedUsers);
     }
     catch(error){
         console.log(error);
@@ -14,8 +18,12 @@ const getUsers = async (req, res) => {
 
 const getUserById=async (req,res)=>{
     try{
-        const user= await User.findById(req.params.id,'name');
-        res.status(200).json(user);
+        const user = await prisma.user.findUnique({
+            where: { id: req.params.id },
+            select: { id: true, name: true }
+        });
+        if (!user) return res.status(404).json({message: "User not found"});
+        res.status(200).json({ _id: user.id, name: user.name });
     }
     catch(error){
         console.log(error);

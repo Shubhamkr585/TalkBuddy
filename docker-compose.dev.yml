@@ -1,0 +1,126 @@
+
+services:
+  # DB Services
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-talkbuddy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-talkbuddy}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:alpine
+
+  # 1. Auth Microservice
+  auth-backend:
+    build: ./auth-backend
+    env_file: 
+      - ./auth-backend/.env
+    # HOT RELOAD SETUP:
+    volumes:
+      - ./auth-backend:/app
+      - /app/node_modules
+    command: npm run dev # Make sure you have "dev": "nodemon index.js" in package.json
+    depends_on:
+      - postgres
+
+  # 2. Chat Microservice Instance 1
+  chat-1:
+    build: ./chat-backend
+    environment:
+      - INSTANCE_ID=1
+    env_file: 
+      - ./chat-backend/.env
+    # HOT RELOAD SETUP:
+    volumes:
+      - ./chat-backend:/app
+      - /app/node_modules
+    command: npm run dev
+    depends_on:
+      - postgres
+      - redis
+
+  # Chat Microservice Instance 2
+  chat-2:
+    build: ./chat-backend
+    environment:
+      - INSTANCE_ID=2
+    env_file: 
+      - ./chat-backend/.env
+    # HOT RELOAD SETUP:
+    volumes:
+      - ./chat-backend:/app
+      - /app/node_modules
+    command: npm run dev
+    depends_on:
+      - postgres
+      - redis
+
+  # 3. API Gateway
+  api-gateway:
+    build: ./api-gateway
+    # HOT RELOAD SETUP:
+    volumes:
+      - ./api-gateway:/app
+      - /app/node_modules
+    command: npm run dev
+    depends_on:
+      - auth-backend
+      - chat-1
+      - chat-2
+
+  # 4. Next.js Frontend
+  frontend:
+    build: ./frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080/api
+      - NEXT_PUBLIC_SOCKET_URL=http://localhost:8080
+    # HOT RELOAD SETUP:
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev # Runs next in dev mode (Fast Refresh)
+
+  # Nginx Load Balancer
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    depends_on:
+      - api-gateway
+      - chat-1
+      - chat-2
+      - frontend
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - chat-1
+      - chat-2
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres-data:

@@ -1,6 +1,5 @@
-
-# dependencies
-/node_modules
+# Dependencies
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -9,32 +8,57 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
+# Archives and extraction artifacts
+*.zip
+*.tar
+*.gz
+*.rar
+*.7z
+files_extracted/
+scratch*
+
+# Design and Stitch artifacts
+.stitch/
+*.stitch
+DESIGN.md
+
+# Internal audit, implementation guides and scratch notes
+TalkBuddy Implementation Guide*.md
+TalkBuddy_ Audit*.md
+TalkBuddy_Fixes.md
+
+# Testing & Coverage
 /coverage
 
-# next.js
+# Next.js & Build outputs
 /.next/
 /out/
-
-# production
 /build
+dist/
+*.tsbuildinfo
+next-env.d.ts
 
-# misc
+# Misc & OS
 .DS_Store
+Thumbs.db
 *.pem
 
-# debug
+# Debug logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# Environment files
+.env
+.env.*
+!.env.example
 
-# vercel
+# Vercel
 .vercel
 
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# Diagrams
+*.drawio
+*.draw.io
+design/

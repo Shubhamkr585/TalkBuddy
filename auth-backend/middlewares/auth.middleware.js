@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import User from "../models/user.model.js";
+import prisma from "../prismaClient.js";
 
 export const protect = async (req, res, next) => {
     try {
@@ -18,7 +18,10 @@ export const protect = async (req, res, next) => {
         }
 
         // 3. User dhoondo (Decoded payload mein userId hai)
-        const user = await User.findById(decoded.userId).select("-password");
+        const user = await prisma.user.findUnique({
+            where: { id: decoded.userId },
+            select: { id: true, name: true, createdAt: true, updatedAt: true }
+        });
 
         if (!user) {
             return res.status(404).json({ message: "User not found" });
@@ -29,6 +32,9 @@ export const protect = async (req, res, next) => {
 
     } catch (error) {
         console.log("Middleware Error", error.message);
+        if (error.name === "JsonWebTokenError" || error.name === "TokenExpiredError") {
+             return res.status(401).json({ message: "Unauthorized - Invalid Token" });
+        }
         res.status(500).json({ message: "Server Error" });
     }
 };

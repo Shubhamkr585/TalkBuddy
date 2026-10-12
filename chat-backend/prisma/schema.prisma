@@ -1,0 +1,39 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "linux-musl"]
+}
+
+model Conversation {
+  id              String   @id @default(cuid())
+  participantsKey String   @unique
+  participants    String[]
+  lastSeq         Int      @default(0)
+  lastMessageAt   DateTime?
+  type            String   @default("dm")
+  name            String?
+  admins          String[]
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  clientMsgId    String
+  conversationId String?
+  senderId       String
+  receiverId     String?
+  text           String
+  seq            Int?
+  status         String   @default("sent")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([conversationId, seq])
+  @@unique([senderId, clientMsgId])
+}
