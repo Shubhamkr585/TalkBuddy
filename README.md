@@ -28,35 +28,37 @@ Traditional chat architectures break when horizontally scaled because WebSockets
 
 ```mermaid
 flowchart TD
-    Client["Client (Next.js / Browser)"]
+    Client["Client - Next.js and Browser"]
     
-    subgraph Edge["Edge Layer (Reverse Proxy)"]
-        Nginx["Nginx Reverse Proxy (:8080)<br/>• least_conn Load Balancing<br/>• auth_request Subrequest Hook<br/>• WebSocket Upgrade Forwarding"]
+    subgraph Edge["Edge Layer Reverse Proxy"]
+        Nginx["Nginx Reverse Proxy - least_conn and Auth Hook"]
     end
     
     subgraph Microservices["Backend Services"]
-        AuthSvc["Auth Service (:4000)<br/>• JWT Authentication<br/>• Session Verification<br/>• User Metadata"]
-        Chat1["Chat Instance 1 (:5000)<br/>• Socket.io Handlers<br/>• Message Routing<br/>• prom-client Metrics"]
-        Chat2["Chat Instance 2 (:5000)<br/>• Socket.io Handlers<br/>• Message Routing<br/>• prom-client Metrics"]
+        AuthSvc["Auth Service - JWT and Session Verification"]
+        Chat1["Chat Instance 1 - Socket.io and Metrics"]
+        Chat2["Chat Instance 2 - Socket.io and Metrics"]
     end
     
-    subgraph StateAndStorage["Data & State Tier"]
-        RedisPubSub[("Redis Cache & Adapter<br/>• @socket.io/redis-adapter<br/>• User Presence Hashes<br/>• Heartbeat TTL Keys")]
-        Postgres[("PostgreSQL Database<br/>• Schema: auth (Users)<br/>• Schema: chat (Conversations, Messages)")]
+    subgraph StateAndStorage["Data and State Tier"]
+        RedisPubSub[("Redis Cache and Adapter - PubSub and Presence")]
+        Postgres[("PostgreSQL Database - Auth and Chat Schemas")]
     end
     
     subgraph Observability["Observability Tier"]
-        Prometheus["Prometheus (:9090)<br/>Scrapes /metrics"]
-        Grafana["Grafana (:3001)<br/>Live Dashboards"]
+        Prometheus["Prometheus - Scrapes Metrics"]
+        Grafana["Grafana - Live Dashboards"]
     end
 
-    Client -->|HTTP / WebSocket| Nginx
-    Nginx -->|/_verify subrequest| AuthSvc
+    Client -->|HTTP and WebSockets| Nginx
+    Nginx -->|Verify Subrequest| AuthSvc
     Nginx -->|Balance least_conn| Chat1
     Nginx -->|Balance least_conn| Chat2
     
-    Chat1 <-->|Pub/Sub Message Sync| RedisPubSub
-    Chat2 <-->|Pub/Sub Message Sync| RedisPubSub
+    Chat1 -->|PubSub Message Sync| RedisPubSub
+    RedisPubSub -->|PubSub Message Sync| Chat1
+    Chat2 -->|PubSub Message Sync| RedisPubSub
+    RedisPubSub -->|PubSub Message Sync| Chat2
     
     Chat1 -->|Prisma ORM| Postgres
     Chat2 -->|Prisma ORM| Postgres
